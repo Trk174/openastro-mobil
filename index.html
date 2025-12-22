@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OpenServer - Realistic Cosmos</title>
+<style>
+html, body {
+  margin: 0; padding: 0; width: 100%;
+  height: 16000px; 
+  background-color: #000;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
+}
+
+#splash {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+background: rgba(0, 0, 0, 0.65);
+display: flex; flex-direction: column; justify-content: center; align-items: center;
+z-index: 9999; transition: opacity 1.5s ease;
+backdrop-filter: blur(4px);
+}
+
+#splash h1 {
+font-size: 3rem; font-family: 'Georgia', serif; font-weight: bold; font-style: italic;
+background: linear-gradient(90deg, #ffffff, #ffcc00, #ffffff);
+background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+animation: shine 3s linear infinite, pulse 1.5s ease-in-out infinite;
+text-align: center;
+}
+
+#loading-text {
+margin-top: 25px; color: white; font-family: 'Courier New', monospace; font-size: 1.2rem;
+text-shadow: 0 0 10px black;
+}
+
+@keyframes shine { to { background-position: 200% center; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+
+#indicator {
+position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+color: white; z-index: 10; font-family: sans-serif; font-size: 13px;
+letter-spacing: 3px; opacity: 0.7; display: none; text-shadow: 0 0 15px orange;
+}
+</style>
+</head>
+<body style="overflow: hidden;"> 
+
+<div id="splash">
+<h1>OpenServer - mobil</h1>
+<div id="loading-text">Site is loading</div>
+</div>
+
+<div id="indicator">URCĂ SPRE SOARE ↑</div>
+<canvas id="sky"></canvas>
+
+<script>
+const canvas = document.getElementById('sky');
+const ctx = canvas.getContext('2d');
+let stars = [];
+let planets = [];
+const shootingStars = [];
+let time = 0;
+let sunRotation = 0;
+
+function init() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const s = canvas.width / 360; 
+  
+  stars = [];
+  for (let i = 0; i < 2000; i++) {
+    stars.push({ x: Math.random() * canvas.width, y: Math.random() * 16000, r: Math.random() * 1.5, a: Math.random() });
+  }
+  
+  // Configurație realistă a planetelor și sateliților (culori și distanțe)
+  planets = [
+    { name: 'Soare', x: 0.5, y: 0, size: 240 * s, color: '#ffcc00', sun: true }, 
+    { name: 'Mercur', x: 0.3, y: 2800, size: 12 * s, color: '#a5a5a5', moons: [] },
+    { name: 'Venus', x: 0.7, y: 4500, size: 24 * s, color: '#e3bb76', moons: [] },
+    { name: 'Pamant', x: 0.25, y: 6200, size: 26 * s, color: '#2271b3', 
+      moons: [{ name: 'Luna', dist: 55, speed: 0.02, size: 4.5, incl: 0.2, color: '#dcdcdc' }] },
+      { name: 'Marte', x: 0.75, y: 8000, size: 16 * s, color: '#b34b22', 
+        moons: [
+          { name: 'Phobos', dist: 32, speed: 0.05, size: 2.2, incl: -0.2, color: '#8b7d7b' },
+          { name: 'Deimos', dist: 48, speed: 0.03, size: 1.8, incl: 0.4, color: '#a9a9a9' }
+        ] },
+        { name: 'Jupiter', x: 0.2, y: 10000, size: 85 * s, color: '#d39c7e', 
+          moons: [
+            { name: 'Io', dist: 115, speed: 0.04, size: 4.8, incl: 0.1, color: '#fff200' }, // Sulfuros/Galben
+            { name: 'Europa', dist: 140, speed: 0.028, size: 4.2, incl: -0.1, color: '#f0f8ff' }, // Gheață/Alb
+            { name: 'Ganymede', dist: 170, speed: 0.018, size: 6.5, incl: 0.05, color: '#968d83' }, // Gri închis
+            { name: 'Callisto', dist: 210, speed: 0.01, size: 6.0, incl: 0.2, color: '#4d4d4d' }  // Craterizat/Negricios
+          ] },
+          { name: 'Saturn', x: 0.8, y: 12000, size: 75 * s, color: '#c5ab6e', ring: true,
+            moons: [
+              { name: 'Titan', dist: 165, speed: 0.022, size: 6.2, incl: 0.15, color: '#ff8c00' }, // Atmosferă portocalie
+              { name: 'Rhea', dist: 120, speed: 0.035, size: 3.8, incl: -0.1, color: '#e0e0e0' },
+              { name: 'Enceladus', dist: 95, speed: 0.045, size: 2.5, incl: 0.05, color: '#ffffff' }
+            ] },
+            { name: 'Uranus', x: 0.35, y: 14000, size: 40 * s, color: '#b5e3e3', 
+              moons: [{ name: 'Titania', dist: 85, speed: 0.02, size: 4.0, incl: 0.7, color: '#cfcfcf' }] },
+              { name: 'Neptun', x: 0.65, y: 15500, size: 38 * s, color: '#4b70dd', 
+                moons: [{ name: 'Triton', dist: 90, speed: 0.018, size: 4.8, incl: -0.5, color: '#f4f4f4' }] }
+  ];
+}
+
+window.addEventListener('resize', init);
+init();
+
+let dotCount = 0;
+const loadingInterval = setInterval(() => {
+  dotCount = (dotCount + 1) % 4;
+  document.getElementById('loading-text').innerText = "Site is loading" + ".".repeat(dotCount);
+}, 500);
+
+setTimeout(() => {
+  clearInterval(loadingInterval);
+  const splash = document.getElementById('splash');
+  splash.style.opacity = '0';
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+  setTimeout(() => {
+    splash.style.display = 'none';
+    window.scrollTo(0, document.body.scrollHeight);
+    document.getElementById('indicator').style.display = 'block';
+  }, 1000);
+}, 5500);
+
+function spawnShootingStar() {
+  if (shootingStars.length < 12) {
+    const fromLeft = Math.random() < 0.5;
+    const type = Math.random();
+    let size = (type > 0.7) ? 4.5 + Math.random() * 2 : 1.8 + Math.random();
+    let speed = 1.8 + Math.random() * 1.5; 
+    shootingStars.push({
+      x: fromLeft ? -100 : canvas.width + 100, y: Math.random() * canvas.height,
+                       vx: fromLeft ? speed : -speed, vy: speed * 0.2,
+                       size: size, len: (size > 4) ? 220 : 110, life: 1.0
+    });
+  }
+}
+setInterval(spawnShootingStar, 850);
+
+function drawSunRays(x, y, radius) {
+  sunRotation += 0.002;
+  const numRays = 60; 
+  for (let i = 0; i < numRays; i++) {
+    let currentAngle = (i * Math.PI * 2) / numRays + sunRotation;
+    let rayLength = radius * 4.8 + Math.sin(sunRotation * 4 + i) * 80;
+    let grad = ctx.createLinearGradient(x, y, x + Math.cos(currentAngle) * rayLength, y + Math.sin(currentAngle) * rayLength);
+    grad.addColorStop(0, 'rgba(255, 215, 0, 0.95)');
+    grad.addColorStop(0.35, 'rgba(255, 130, 0, 0.5)');
+    grad.addColorStop(1, 'rgba(255, 204, 0, 0)');
+    ctx.strokeStyle = grad; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(currentAngle) * rayLength, y + Math.sin(currentAngle) * rayLength); ctx.stroke();
+  }
+}
+
+function draw() {
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  const sunProximity = Math.max(0, 1 - (scrollY / 3800)); 
+  const r = Math.floor(255 * sunProximity), g = Math.floor(180 * sunProximity);
+  ctx.fillStyle = `rgb(${r}, ${g}, 0)`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  time += 0.5;
+  
+  stars.forEach(s => {
+    const sy = s.y - scrollY;
+    if (sy > -10 && sy < canvas.height + 10) {
+      ctx.globalAlpha = s.a * (1 - sunProximity);
+      ctx.fillStyle = "white";
+      ctx.beginPath(); ctx.arc(s.x, sy, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+  
+  planets.forEach(p => {
+    const sy = p.y - scrollY;
+    const posX = canvas.width * p.x; 
+    if (sy > -1500 && sy < canvas.height + 1500) {
+      ctx.globalAlpha = 1;
+      
+      const sortedMoons = p.moons ? p.moons.map(m => {
+        const orbitAngle = time * m.speed;
+        return { ...m, z: Math.sin(orbitAngle), angle: orbitAngle };
+      }).sort((a, b) => a.z - b.z) : [];
+      
+      sortedMoons.filter(m => m.z < 0).forEach(m => drawMoon(m, posX, sy));
+      
+      if (p.sun) {
+        drawSunRays(posX, sy, p.size);
+        let glow = ctx.createRadialGradient(posX, sy, p.size/2, posX, sy, p.size * 6.5);
+        glow.addColorStop(0, 'rgba(255, 140, 0, 0.85)'); glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(posX, sy, p.size * 7, 0, Math.PI*2); ctx.fill();
+      }
+      
+      let grad = ctx.createRadialGradient(posX - p.size/3, sy - p.size/3, p.size/10, posX, sy, p.size);
+      grad.addColorStop(0, p.color); grad.addColorStop(1, '#000');
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(posX, sy, p.size, 0, Math.PI * 2); ctx.fill();
+      
+      if (p.ring) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.ellipse(posX, sy, p.size * 2.6, p.size * 0.7, 0.35, 0, Math.PI*2); ctx.stroke();
+      }
+      
+      sortedMoons.filter(m => m.z >= 0).forEach(m => drawMoon(m, posX, sy));
+    }
+  });
+  
+  function drawMoon(m, px, py) {
+    const mx = px + Math.cos(m.angle) * m.dist;
+    const my = py + Math.sin(m.angle) * m.dist * m.incl;
+    const dSize = m.size * (1 + m.z * 0.2);
+    const opac = 0.6 + (m.z + 1) * 0.2;
+    
+    ctx.fillStyle = m.color;
+    ctx.globalAlpha = opac;
+    ctx.beginPath();
+    ctx.arc(mx, my, dSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Mică umbră pe satelit pentru realism
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.arc(mx + dSize/3, my, dSize/1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  
+  for (let i = shootingStars.length - 1; i >= 0; i--) {
+    let s = shootingStars[i];
+    s.x += s.vx; s.y += s.vy; s.life -= 0.007;
+    if (s.life <= 0) { shootingStars.splice(i, 1); continue; }
+    ctx.save();
+    let tailGrad = ctx.createLinearGradient(s.x, s.y, s.x - (s.vx * s.len * 0.45), s.y - (s.vy * s.len * 0.45));
+    tailGrad.addColorStop(0, `rgba(255, 255, 255, ${s.life})`);
+    tailGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.strokeStyle = tailGrad; ctx.lineWidth = s.size * s.life;
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - (s.vx * s.len * 0.4), s.y - (s.vy * s.len * 0.4)); ctx.stroke();
+    ctx.fillStyle = `rgba(255, 255, 255, ${s.life})`;
+    ctx.shadowBlur = 25 * s.life; ctx.shadowColor = "white";
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
