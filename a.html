@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistem Solar - info.gd</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: move; }
+    </style>
+</head>
+<body>
+
+<canvas id="solar"></canvas>
+
+<script>
+const canvas = document.getElementById('solar');
+const ctx = canvas.getContext('2d');
+
+let width, height, dpr;
+let angleX = 0.8, angleY = -0.5;
+let cameraZ = -500, targetCameraZ = -500;
+let isDragging = false, lastX, lastY;
+
+const planets = [
+    { dist: 80,  size: 4,  color: '#A5A5A5', speed: 0.008, a: Math.random()*6 },
+    { dist: 120, size: 8,  color: '#E3BB76', speed: 0.005, a: Math.random()*6 },
+    { dist: 170, size: 9,  color: '#2271B3', speed: 0.004, a: Math.random()*6 },
+    { dist: 220, size: 7,  color: '#B34B22', speed: 0.003, a: Math.random()*6 },
+    { dist: 320, size: 25, color: '#D39C7E', speed: 0.002, a: Math.random()*6 },
+    { dist: 420, size: 20, color: '#C5AB6E', speed: 0.0015, a: Math.random()*6, ring: true },
+    { dist: 500, size: 14, color: '#B5E3E3', speed: 0.001, a: Math.random()*6 },
+    { dist: 580, size: 13, color: '#4B70DD', speed: 0.0008, a: Math.random()*6 }
+];
+
+function resize() {
+    dpr = window.devicePixelRatio || 1;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+}
+
+function project(x, y, z) {
+    let y1 = y * Math.cos(angleX) - z * Math.sin(angleX);
+    let z1 = y * Math.sin(angleX) + z * Math.cos(angleX);
+    let x1 = x * Math.cos(angleY) - z1 * Math.sin(angleY);
+    let z2 = x * Math.sin(angleY) + z1 * Math.cos(angleY);
+    let sc = 600 / (600 + z2 - cameraZ);
+    return { x: x1 * sc + width/2, y: y1 * sc + height/2, sc: sc, z: z2 };
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    cameraZ += (targetCameraZ - cameraZ) * 0.1;
+
+    // 1. Orbite GRI VIZIBILE
+    ctx.strokeStyle = '#666'; // Gri solid
+    ctx.lineWidth = 1;
+    planets.forEach(p => {
+        ctx.beginPath();
+        for (let i = 0; i <= 6.3; i += 0.1) {
+            let pt = project(Math.cos(i) * p.dist, 0, Math.sin(i) * p.dist);
+            if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+    });
+
+    // 2. Soare
+    let sunP = project(0, 0, 0);
+    let sunSize = 30 * sunP.sc;
+    let grad = ctx.createRadialGradient(sunP.x, sunP.y, 0, sunP.x, sunP.y, sunSize);
+    grad.addColorStop(0, 'white'); grad.addColorStop(0.4, 'orange'); grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(sunP.x, sunP.y, sunSize * 2, 0, Math.PI*2); ctx.fill();
+
+    // 3. Planete
+    planets.forEach(p => {
+        p.a += p.speed;
+        let x = Math.cos(p.a) * p.dist;
+        let z = Math.sin(p.a) * p.dist;
+        let pt = project(x, 0, z);
+        
+        let pGrad = ctx.createRadialGradient(pt.x - (p.size*pt.sc)/3, pt.y - (p.size*pt.sc)/3, 1, pt.x, pt.y, p.size * pt.sc);
+        pGrad.addColorStop(0, p.color); pGrad.addColorStop(1, 'black');
+        ctx.fillStyle = pGrad;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, p.size * pt.sc, 0, Math.PI*2); ctx.fill();
+
+        if (p.ring) {
+            ctx.strokeStyle = '#555';
+            ctx.beginPath(); ctx.ellipse(pt.x, pt.y, p.size*pt.sc*2.5, p.size*pt.sc*0.8, angleX, 0, Math.PI*2); ctx.stroke();
+        }
+    });
+
+    requestAnimationFrame(draw);
+}
+
+// Interacțiune
+window.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+    if (isDragging) {
+        angleY += (e.clientX - lastX) * 0.01;
+        angleX += (e.clientY - lastY) * 0.01;
+        lastX = e.clientX; lastY = e.clientY;
+    }
+});
+window.addEventListener('wheel', e => {
+    targetCameraZ += e.deltaY;
+    targetCameraZ = Math.max(-2000, Math.min(400, targetCameraZ));
+});
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>
