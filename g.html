@@ -1,0 +1,223 @@
+ <!DOCTYPE html> 
+
+<html lang="ro"> 
+
+<head> 
+
+<meta charset="UTF-8"> 
+
+<title>OpenServer</title> 
+
+<style> 
+
+html, body { 
+
+  margin: 0; 
+
+  padding: 0; 
+
+  width: 100%; 
+
+  height: 100%; 
+
+  background: radial-gradient(circle at bottom, #050a24, #000); 
+
+  overflow: hidden; 
+
+} 
+
+canvas { display: block; } 
+
+</style> 
+
+</head> 
+
+<body> 
+
+<canvas id="sky"></canvas> 
+
+ 
+
+<script> 
+
+const canvas = document.getElementById('sky'); 
+
+const ctx = canvas.getContext('2d'); 
+
+ 
+
+function resize() { 
+
+  canvas.width = window.innerWidth; 
+
+  canvas.height = window.innerHeight; 
+
+} 
+
+window.addEventListener('resize', resize); 
+
+resize(); 
+
+ 
+
+// STELE FIXE 
+
+const stars = []; 
+
+for (let i = 0; i < 1000; i++) { 
+
+  stars.push({ 
+
+    x: Math.random() * canvas.width, 
+
+             y: Math.random() * canvas.height, 
+
+             r: Math.random() * 2 + 0.5, 
+
+             a: Math.random() * 0.8 + 0.2 
+
+  }); 
+
+} 
+
+ 
+
+// STELE CAZATOARE 
+
+const meteors = []; 
+
+ 
+
+function spawnMeteor() { 
+
+  const fromLeft = Math.random() < 0.5; 
+
+  meteors.push({ 
+
+    x: fromLeft ? -30 : canvas.width + 30, 
+
+    y: Math.random() * canvas.height * 0.6, 
+
+               vx: fromLeft ? (5 + Math.random() * 3) : (-5 - Math.random() * 3), 
+
+               vy: 3 + Math.random() * 2, 
+
+               life: 120, 
+
+               trail: [] 
+
+  }); 
+
+} 
+
+ 
+
+function draw() { 
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height); 
+
+   
+
+  // deseneaza stele fixe 
+
+  for (const s of stars) { 
+
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`; 
+
+    ctx.beginPath(); 
+
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
+
+    ctx.fill(); 
+
+  } 
+
+   
+
+  // deseneaza meteori 
+
+  for (let i = meteors.length - 1; i >= 0; i--) { 
+
+    const m = meteors[i]; 
+
+     
+
+    m.trail.push({ x: m.x, y: m.y }); 
+
+    if (m.trail.length > 18) m.trail.shift(); 
+
+     
+
+    // COADA ALBASTRUIE (PUNCTE) 
+
+    for (let t = 0; t < m.trail.length; t++) { 
+
+      const p = m.trail[t]; 
+
+      const alpha = t / m.trail.length; 
+
+      ctx.fillStyle = `rgba(120,180,255,${alpha * 0.6})`; 
+
+      ctx.beginPath(); 
+
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); 
+
+      ctx.fill(); 
+
+    } 
+
+     
+
+    // CAPUL METEORULUI 
+
+    ctx.fillStyle = 'rgba(255,255,255,1)'; 
+
+    ctx.beginPath(); 
+
+    ctx.arc(m.x, m.y, 5, 0, Math.PI * 2); 
+
+    ctx.fill(); 
+
+     
+
+    // AURA 
+
+    ctx.fillStyle = 'rgba(160,200,255,0.35)'; 
+
+    ctx.beginPath(); 
+
+    ctx.arc(m.x, m.y, 10, 0, Math.PI * 2); 
+
+    ctx.fill(); 
+
+     
+
+    m.x += m.vx; 
+
+    m.y += m.vy; 
+
+    m.life--; 
+
+     
+
+    if (m.life <= 0) meteors.splice(i, 1); 
+
+  } 
+
+   
+
+  requestAnimationFrame(draw); 
+
+} 
+
+ 
+
+setInterval(spawnMeteor, 600); 
+
+draw(); 
+
+</script> 
+
+</body> 
+
+</html> 
